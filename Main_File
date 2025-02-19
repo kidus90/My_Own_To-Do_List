@@ -38,12 +38,14 @@ class ToDoApp:
         self.root.geometry("370x270")
         self.root.resizable(False, False)
 
+        # Initialize task lists and streak variables
         self.tasks = []
         self.done_tasks = []
         self.streak_count = 0
         self.last_streak_update = None
         self.reset_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
 
+        # Create the UI and setup the database
         self.create_ui()
         self.setup_database()
         self.load_tasks()
@@ -51,6 +53,7 @@ class ToDoApp:
     def setup_database(self):
         self.conn = sqlite3.connect('tasks.db')
         self.cursor = self.conn.cursor()
+        # Create tasks table if it doesn't exist
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY,
@@ -61,6 +64,7 @@ class ToDoApp:
                 is_done INTEGER
             )
         ''')
+        # Create streak table if it doesn't exist
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS streak (
                 id INTEGER PRIMARY KEY,
@@ -72,33 +76,39 @@ class ToDoApp:
         self.load_streak()
 
     def load_streak(self):
+        # Load streak data from the database
         self.cursor.execute('SELECT last_update, streak_count FROM streak WHERE id = 1')
         result = self.cursor.fetchone()
         if result:
             self.last_streak_update = datetime.strptime(result[0], '%Y-%m-%d')
             self.streak_count = result[1]
         else:
+            # Initialize streak data if not present
             self.cursor.execute('INSERT INTO streak (id, last_update, streak_count) VALUES (1, ?, ?)', (datetime.now().strftime('%Y-%m-%d'), 0))
             self.conn.commit()
             self.last_streak_update = datetime.now()
             self.streak_count = 0
 
     def save_streak(self):
+        # Save streak data to the database
         self.cursor.execute('UPDATE streak SET last_update = ?, streak_count = ? WHERE id = 1', (self.last_streak_update.strftime('%Y-%m-%d'), self.streak_count))
         self.conn.commit()
 
     def load_tasks(self):
+        # Load uncompleted tasks from the database
         self.cursor.execute('SELECT * FROM tasks WHERE is_done = 0')
         self.tasks = self.cursor.fetchall()
         for task in self.tasks:
             self.task_listbox.insert(tk.END, f"{task[1]} - {task[2]} - {task[3]} min")
 
+        # Load completed tasks from the database
         self.cursor.execute('SELECT * FROM tasks WHERE is_done = 1')
         self.done_tasks = self.cursor.fetchall()
         for task in self.done_tasks:
             self.done_listbox.insert(tk.END, f"{task[1]} - {task[2]} - {task[3]} min")
 
     def save_task_to_db(self, task):
+        # Save a new task to the database
         self.cursor.execute('''
             INSERT INTO tasks (name, priority, time_needed, start_time, is_done)
             VALUES (?, ?, ?, ?, ?)
@@ -108,34 +118,41 @@ class ToDoApp:
         return task_id
 
     def update_task_in_db(self, task_id, is_done):
+        # Update the status of a task in the database
         self.cursor.execute('UPDATE tasks SET is_done = ? WHERE id = ?', (is_done, task_id))
         self.conn.commit()
 
     def create_ui(self):
+        # Add Task button
         self.add_task_button = ttk.Button(self.root, text="Add Task", command=self.open_task_creation_window)
         self.add_task_button.grid(row=0, column=0, columnspan=2)
 
+        # Labels for uncompleted and completed tasks
         self.uncompleted_label = ttk.Label(self.root, text="Uncompleted Tasks")
         self.uncompleted_label.grid(row=1, column=0)
 
         self.completed_label = ttk.Label(self.root, text="Completed Tasks")
         self.completed_label.grid(row=1, column=1)
 
+        # Listboxes for tasks
         self.task_listbox = tk.Listbox(self.root, width=30)
         self.task_listbox.grid(row=2, column=0)
 
         self.done_listbox = tk.Listbox(self.root, width=30)
         self.done_listbox.grid(row=2, column=1)
 
+        # Buttons for starting timer and removing tasks
         self.start_timer_button = ttk.Button(self.root, text="Start Timer", command=self.open_timer_window)
         self.start_timer_button.grid(row=3, column=0)
 
         self.remove_task_button = ttk.Button(self.root, text="Remove Task", command=self.remove_task)
         self.remove_task_button.grid(row=3, column=1)
 
+        # Label for streak count
         self.streak_label = ttk.Label(self.root, text=f"Streak: {self.streak_count}")
         self.streak_label.grid(row=4, column=0, columnspan=2)
 
+        # Check reset time every second
         self.root.after(1000, self.check_reset_time)
 
     def open_task_creation_window(self):
@@ -348,6 +365,7 @@ class ToDoApp:
         self.root.after(1000, self.check_reset_time)
 
     def reset_tasks(self):
+        # Reset all tasks to uncompleted status
         self.cursor.execute('UPDATE tasks SET is_done = 0')
         self.conn.commit()
         self.task_listbox.delete(0, tk.END)
