@@ -18,17 +18,14 @@ class ToDoApp:
         self.add_task_button.grid(row=0, column=0, columnspan=2)
 
         self.task_listbox = tk.Listbox(self.root)
-        self.task_listbox.grid(row=1, column=0, columnspan=2)
+        self.task_listbox.grid(row=1, column=0)
 
         self.done_listbox = tk.Listbox(self.root)
-        self.done_listbox.grid(row=2, column=0, columnspan=2)
+        self.done_listbox.grid(row=1, column=1)
 
         self.start_timer_button = ttk.Button(self.root, text="Start Timer", command=self.open_timer_window)
-        self.start_timer_button.grid(row=3, column=0)
-
-        self.complete_task_button = ttk.Button(self.root, text="Complete Task", command=self.complete_task)
-        self.complete_task_button.grid(row=3, column=1)
-
+        self.start_timer_button.grid(row=2, column=0)
+        
         self.root.after(1000, self.check_reset_time)
 
     def open_task_creation_window(self):
@@ -119,15 +116,6 @@ class ToDoApp:
     def cancel_timer(self):
         self.timer_running = False
         self.timer_window.destroy()
-
-    def complete_task(self):
-        selected_task_index = self.task_listbox.curselection()
-        if selected_task_index:
-            task = self.tasks.pop(selected_task_index[0])
-            task["is_done"] = True
-            self.done_tasks.append(task)
-            self.task_listbox.delete(selected_task_index)
-            self.done_listbox.insert(tk.END, task["name"])
 
     def check_reset_time(self):
         current_time = datetime.now()
