@@ -11,6 +11,7 @@ class ToDoApp:
         self.tasks = []
         self.done_tasks = []
         self.streak_count = 0
+        self.last_streak_update = None
         self.reset_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
 
         self.create_ui()
@@ -30,6 +31,30 @@ class ToDoApp:
                 is_done INTEGER
             )
         ''')
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS streak (
+                id INTEGER PRIMARY KEY,
+                last_update TEXT,
+                streak_count INTEGER
+            )
+        ''')
+        self.conn.commit()
+        self.load_streak()
+
+    def load_streak(self):
+        self.cursor.execute('SELECT last_update, streak_count FROM streak WHERE id = 1')
+        result = self.cursor.fetchone()
+        if result:
+            self.last_streak_update = datetime.strptime(result[0], '%Y-%m-%d')
+            self.streak_count = result[1]
+        else:
+            self.cursor.execute('INSERT INTO streak (id, last_update, streak_count) VALUES (1, ?, ?)', (datetime.now().strftime('%Y-%m-%d'), 0))
+            self.conn.commit()
+            self.last_streak_update = datetime.now()
+            self.streak_count = 0
+
+    def save_streak(self):
+        self.cursor.execute('UPDATE streak SET last_update = ?, streak_count = ? WHERE id = 1', (self.last_streak_update.strftime('%Y-%m-%d'), self.streak_count))
         self.conn.commit()
 
     def load_tasks(self):
@@ -228,9 +253,13 @@ class ToDoApp:
             self.task_listbox.delete(selected_task_index)
             self.done_listbox.insert(tk.END, f"{task_dict['name']} - {task_dict['priority']} - {task_dict['time_needed']} min")
             self.update_task_in_db(task_dict["id"], 1)
-            if not self.tasks:
+            if not self.tasks and (self.last_streak_update is None or self.last_streak_update.date() < datetime.now().date()):
+                if self.last_streak_update is None or (datetime.now().date() - self.last_streak_update.date()).days > 1:
+                    self.streak_count = 0
                 self.streak_count += 1
                 self.streak_label.config(text=f"Streak: {self.streak_count}")
+                self.last_streak_update = datetime.now()
+                self.save_streak()
 
     def remove_task(self):
         selected_task_index = self.task_listbox.curselection()
