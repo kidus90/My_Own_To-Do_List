@@ -237,8 +237,23 @@ class ToDoApp:
         if selected_task_index:
             task = self.tasks.pop(selected_task_index[0])
             self.task_listbox.delete(selected_task_index)
-            self.cursor.execute('DELETE FROM tasks WHERE id = ?', (task["id"],))
+            if isinstance(task, tuple):
+                task_id = task[0]
+            else:
+                task_id = task["id"]
+            self.cursor.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
             self.conn.commit()
+        else:
+            selected_task_index = self.done_listbox.curselection()
+            if selected_task_index:
+                task = self.done_tasks.pop(selected_task_index[0])
+                self.done_listbox.delete(selected_task_index)
+                if isinstance(task, tuple):
+                    task_id = task[0]
+                else:
+                    task_id = task["id"]
+                self.cursor.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
+                self.conn.commit()
 
     def pause_timer(self):
         self.timer_running = not self.timer_running
