@@ -112,32 +112,46 @@ class ToDoApp:
         self.task_creation_window = tk.Toplevel(self.root)
         self.task_creation_window.title("Create Task")
 
+        # Configure the grid layout
+        self.task_creation_window.columnconfigure(0, weight=1)
+        self.task_creation_window.columnconfigure(1, weight=1)
+        self.task_creation_window.columnconfigure(2, weight=1)
+        self.task_creation_window.columnconfigure(3, weight=1)
+
+        # Task Name
         self.task_name_label = ttk.Label(self.task_creation_window, text="Task Name:")
-        self.task_name_label.grid(row=0, column=0)
+        self.task_name_label.grid(row=0, column=0, padx=10, pady=10, sticky="E")
 
         self.task_name_entry = ttk.Entry(self.task_creation_window)
-        self.task_name_entry.grid(row=0, column=1)
+        self.task_name_entry.grid(row=0, column=1, columnspan=3, padx=10, pady=10, sticky="W")
 
+        # Priority Level
         self.priority_label = ttk.Label(self.task_creation_window, text="Priority Level:")
-        self.priority_label.grid(row=1, column=0)
+        self.priority_label.grid(row=1, column=0, padx=10, pady=10, sticky="E")
 
         self.priority_combobox = ttk.Combobox(self.task_creation_window, values=["Low", "Medium", "High"])
-        self.priority_combobox.grid(row=1, column=1)
+        self.priority_combobox.grid(row=1, column=1, columnspan=3, padx=10, pady=10, sticky="W")
 
+        # Time Needed
         self.time_needed_label = ttk.Label(self.task_creation_window, text="Time Needed (hours:minutes):")
-        self.time_needed_label.grid(row=2, column=0)
+        self.time_needed_label.grid(row=2, column=0, padx=10, pady=10, sticky="E")
 
         self.hours_entry = ttk.Entry(self.task_creation_window, width=5)
-        self.hours_entry.grid(row=2, column=1, sticky="W")
+        self.hours_entry.grid(row=2, column=1, padx=(10, 0), pady=10, sticky="W")
 
         self.colon_label = ttk.Label(self.task_creation_window, text=":")
-        self.colon_label.grid(row=2, column=1, padx=(30, 0))
+        self.colon_label.grid(row=2, column=2, padx=(0, 0), pady=10, sticky="W")
 
         self.minutes_entry = ttk.Entry(self.task_creation_window, width=5)
-        self.minutes_entry.grid(row=2, column=1, padx=(50, 0), sticky="W")
+        self.minutes_entry.grid(row=2, column=3, padx=(0, 10), pady=10, sticky="W")
 
+        # Save Task Button
         self.save_task_button = ttk.Button(self.task_creation_window, text="Save Task", command=self.add_task)
-        self.save_task_button.grid(row=3, column=0, columnspan=2)
+        self.save_task_button.grid(row=3, column=0, columnspan=4, padx=10, pady=20)
+
+        # Add some padding around all widgets
+        for child in self.task_creation_window.winfo_children():
+            child.grid_configure(padx=10, pady=5)
 
     def add_task(self):
         task_name = self.task_name_entry.get()
