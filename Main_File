@@ -26,6 +26,9 @@ class ToDoApp:
 
         self.start_timer_button = ttk.Button(self.root, text="Start Timer", command=self.open_timer_window)
         self.start_timer_button.grid(row=2, column=0)
+
+        self.remove_task_button = ttk.Button(self.root, text="Remove Task", command=self.remove_task)
+        self.remove_task_button.grid(row=2, column=1)
         
         self.root.after(1000, self.check_reset_time)
 
@@ -45,11 +48,17 @@ class ToDoApp:
         self.priority_combobox = ttk.Combobox(self.task_creation_window, values=["Low", "Medium", "High"])
         self.priority_combobox.grid(row=1, column=1)
 
-        self.time_needed_label = ttk.Label(self.task_creation_window, text="Time Needed (minutes):")
+        self.time_needed_label = ttk.Label(self.task_creation_window, text="Time Needed (hours:minutes):")
         self.time_needed_label.grid(row=2, column=0)
 
-        self.time_needed_entry = ttk.Entry(self.task_creation_window)
-        self.time_needed_entry.grid(row=2, column=1)
+        self.hours_entry = ttk.Entry(self.task_creation_window, width=5)
+        self.hours_entry.grid(row=2, column=1, sticky="W")
+
+        self.colon_label = ttk.Label(self.task_creation_window, text=":")
+        self.colon_label.grid(row=2, column=1, padx=(30, 0))
+
+        self.minutes_entry = ttk.Entry(self.task_creation_window, width=5)
+        self.minutes_entry.grid(row=2, column=1, padx=(50, 0), sticky="W")
 
         self.save_task_button = ttk.Button(self.task_creation_window, text="Save Task", command=self.add_task)
         self.save_task_button.grid(row=3, column=0, columnspan=2)
@@ -57,13 +66,15 @@ class ToDoApp:
     def add_task(self):
         task_name = self.task_name_entry.get()
         priority = self.priority_combobox.get()
-        time_needed = self.time_needed_entry.get()
+        hours = self.hours_entry.get()
+        minutes = self.minutes_entry.get()
 
-        if task_name and priority and time_needed.isdigit():
+        if task_name and priority and hours.isdigit() and minutes.isdigit():
+            time_needed = int(hours) * 60 + int(minutes)
             task = {
                 "name": task_name,
                 "priority": priority,
-                "time_needed": int(time_needed),
+                "time_needed": time_needed,
                 "start_time": None,
                 "is_done": False
             }
@@ -71,7 +82,8 @@ class ToDoApp:
             self.task_listbox.insert(tk.END, f"{task_name} - {priority} - {time_needed} min")
             self.task_name_entry.delete(0, tk.END)
             self.priority_combobox.set("")
-            self.time_needed_entry.delete(0, tk.END)
+            self.hours_entry.delete(0, tk.END)
+            self.minutes_entry.delete(0, tk.END)
             self.task_creation_window.destroy()
 
     def open_timer_window(self):
@@ -86,29 +98,65 @@ class ToDoApp:
             self.time_left = task["time_needed"] * 60
             self.total_time = self.time_left
 
+            self.timer_type = tk.StringVar(value="canvas")
+
+            self.toggle_button = ttk.Checkbutton(self.timer_window, text="Toggle Timer Type", variable=self.timer_type, onvalue="canvas", offvalue="countdown", command=self.update_timer_display)
+            self.toggle_button.grid(row=0, column=0, columnspan=2)
+
             self.canvas = tk.Canvas(self.timer_window, width=200, height=200)
-            self.canvas.grid(row=0, column=0, columnspan=2)
             self.arc = self.canvas.create_arc(10, 10, 190, 190, start=90, extent=0, fill="blue")
 
+            self.time_label = ttk.Label(self.timer_window, text=self.format_time(self.time_left))
+
             self.pause_button = ttk.Button(self.timer_window, text="Pause", command=self.pause_timer)
-            self.pause_button.grid(row=1, column=0)
+            self.pause_button.grid(row=2, column=0)
 
             self.cancel_button = ttk.Button(self.timer_window, text="Cancel", command=self.cancel_timer)
-            self.cancel_button.grid(row=1, column=1)
+            self.cancel_button.grid(row=2, column=1)
 
             self.timer_running = True
+            self.update_timer_display()
             self.update_timer()
+
+    def update_timer_display(self):
+        if self.timer_type.get() == "canvas":
+            self.canvas.grid(row=1, column=0, columnspan=2)
+            self.time_label.grid_forget()
+        else:
+            self.canvas.grid_forget()
+            self.time_label.grid(row=1, column=0, columnspan=2)
 
     def update_timer(self):
         if self.timer_running:
             if self.time_left > 0:
                 self.time_left -= 1
                 extent = (self.total_time - self.time_left) / self.total_time * 360
-                self.canvas.itemconfig(self.arc, extent=extent)
+                if self.timer_type.get() == "canvas":
+                    self.canvas.itemconfig(self.arc, extent=extent)
+                self.time_label.config(text=self.format_time(self.time_left))
                 self.root.after(1000, self.update_timer)
             else:
                 self.complete_task()
                 self.timer_window.destroy()
+
+    def format_time(self, seconds):
+        minutes, seconds = divmod(seconds, 60)
+        return f"{minutes:02}:{seconds:02}"
+
+    def complete_task(self):
+        selected_task_index = self.task_listbox.curselection()
+        if selected_task_index:
+            task = self.tasks.pop(selected_task_index[0])
+            task["is_done"] = True
+            self.done_tasks.append(task)
+            self.task_listbox.delete(selected_task_index)
+            self.done_listbox.insert(tk.END, f"{task['name']} - {task['priority']} - {task['time_needed']} min")
+
+    def remove_task(self):
+        selected_task_index = self.task_listbox.curselection()
+        if selected_task_index:
+            self.tasks.pop(selected_task_index[0])
+            self.task_listbox.delete(selected_task_index)
 
     def pause_timer(self):
         self.timer_running = not self.timer_running
