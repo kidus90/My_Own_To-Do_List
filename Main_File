@@ -18,17 +18,23 @@ class ToDoApp:
         self.add_task_button = ttk.Button(self.root, text="Add Task", command=self.open_task_creation_window)
         self.add_task_button.grid(row=0, column=0, columnspan=2)
 
+        self.uncompleted_label = ttk.Label(self.root, text="Uncompleted Tasks")
+        self.uncompleted_label.grid(row=1, column=0)
+
+        self.completed_label = ttk.Label(self.root, text="Completed Tasks")
+        self.completed_label.grid(row=1, column=1)
+
         self.task_listbox = tk.Listbox(self.root)
-        self.task_listbox.grid(row=1, column=0)
+        self.task_listbox.grid(row=2, column=0)
 
         self.done_listbox = tk.Listbox(self.root)
-        self.done_listbox.grid(row=1, column=1)
+        self.done_listbox.grid(row=2, column=1)
 
         self.start_timer_button = ttk.Button(self.root, text="Start Timer", command=self.open_timer_window)
-        self.start_timer_button.grid(row=2, column=0)
+        self.start_timer_button.grid(row=3, column=0)
 
         self.remove_task_button = ttk.Button(self.root, text="Remove Task", command=self.remove_task)
-        self.remove_task_button.grid(row=2, column=1)
+        self.remove_task_button.grid(row=3, column=1)
         
         self.root.after(1000, self.check_reset_time)
 
@@ -100,7 +106,7 @@ class ToDoApp:
 
             self.timer_type = tk.StringVar(value="canvas")
 
-            self.toggle_button = ttk.Checkbutton(self.timer_window, text="Toggle Timer Type", variable=self.timer_type, onvalue="canvas", offvalue="countdown", command=self.update_timer_display)
+            self.toggle_button = ttk.Checkbutton(self.timer_window, text="Timer Type", variable=self.timer_type, onvalue="canvas", offvalue="countdown", command=self.update_timer_display)
             self.toggle_button.grid(row=0, column=0, columnspan=2)
 
             self.canvas = tk.Canvas(self.timer_window, width=200, height=200)
