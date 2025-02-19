@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from datetime import datetime, timedelta
-import math
+import sqlite3
 
 class ToDoApp:
     def __init__(self, root):
@@ -14,6 +14,47 @@ class ToDoApp:
         self.reset_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
 
         self.create_ui()
+        self.setup_database()
+        self.load_tasks()
+
+    def setup_database(self):
+        self.conn = sqlite3.connect('tasks.db')
+        self.cursor = self.conn.cursor()
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                priority TEXT,
+                time_needed INTEGER,
+                start_time TEXT,
+                is_done INTEGER
+            )
+        ''')
+        self.conn.commit()
+
+    def load_tasks(self):
+        self.cursor.execute('SELECT * FROM tasks WHERE is_done = 0')
+        self.tasks = self.cursor.fetchall()
+        for task in self.tasks:
+            self.task_listbox.insert(tk.END, f"{task[1]} - {task[2]} - {task[3]} min")
+
+        self.cursor.execute('SELECT * FROM tasks WHERE is_done = 1')
+        self.done_tasks = self.cursor.fetchall()
+        for task in self.done_tasks:
+            self.done_listbox.insert(tk.END, f"{task[1]} - {task[2]} - {task[3]} min")
+
+    def save_task_to_db(self, task):
+        self.cursor.execute('''
+            INSERT INTO tasks (name, priority, time_needed, start_time, is_done)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (task['name'], task['priority'], task['time_needed'], task['start_time'], task['is_done']))
+        self.conn.commit()
+        task_id = self.cursor.lastrowid
+        return task_id
+
+    def update_task_in_db(self, task_id, is_done):
+        self.cursor.execute('UPDATE tasks SET is_done = ? WHERE id = ?', (is_done, task_id))
+        self.conn.commit()
 
     def create_ui(self):
         self.add_task_button = ttk.Button(self.root, text="Add Task", command=self.open_task_creation_window)
@@ -88,6 +129,8 @@ class ToDoApp:
                 "start_time": None,
                 "is_done": False
             }
+            task_id = self.save_task_to_db(task)
+            task["id"] = task_id
             self.tasks.append(task)
             self.task_listbox.insert(tk.END, f"{task_name} - {priority} - {time_needed} min")
             self.task_name_entry.delete(0, tk.END)
@@ -103,9 +146,20 @@ class ToDoApp:
             self.timer_window.title("Task Timer")
 
             task = self.tasks[selected_task_index[0]]
-            task["start_time"] = datetime.now()
+            if isinstance(task, tuple):
+                task_dict = {
+                    "id": task[0],
+                    "name": task[1],
+                    "priority": task[2],
+                    "time_needed": task[3],
+                    "start_time": datetime.now(),
+                    "is_done": task[5]
+                }
+            else:
+                task_dict = task
+                task_dict["start_time"] = datetime.now()
 
-            self.time_left = task["time_needed"] * 60
+            self.time_left = task_dict["time_needed"] * 60
             self.total_time = self.time_left
 
             self.timer_type = tk.StringVar(value="canvas")
@@ -157,10 +211,23 @@ class ToDoApp:
         selected_task_index = self.task_listbox.curselection()
         if selected_task_index:
             task = self.tasks.pop(selected_task_index[0])
-            task["is_done"] = True
-            self.done_tasks.append(task)
+            if isinstance(task, tuple):
+                task_dict = {
+                    "id": task[0],
+                    "name": task[1],
+                    "priority": task[2],
+                    "time_needed": task[3],
+                    "start_time": task[4],
+                    "is_done": True
+                }
+            else:
+                task_dict = task
+                task_dict["is_done"] = True
+
+            self.done_tasks.append(task_dict)
             self.task_listbox.delete(selected_task_index)
-            self.done_listbox.insert(tk.END, f"{task['name']} - {task['priority']} - {task['time_needed']} min")
+            self.done_listbox.insert(tk.END, f"{task_dict['name']} - {task_dict['priority']} - {task_dict['time_needed']} min")
+            self.update_task_in_db(task_dict["id"], 1)
             if not self.tasks:
                 self.streak_count += 1
                 self.streak_label.config(text=f"Streak: {self.streak_count}")
@@ -168,8 +235,10 @@ class ToDoApp:
     def remove_task(self):
         selected_task_index = self.task_listbox.curselection()
         if selected_task_index:
-            self.tasks.pop(selected_task_index[0])
+            task = self.tasks.pop(selected_task_index[0])
             self.task_listbox.delete(selected_task_index)
+            self.cursor.execute('DELETE FROM tasks WHERE id = ?', (task["id"],))
+            self.conn.commit()
 
     def pause_timer(self):
         self.timer_running = not self.timer_running
@@ -188,13 +257,12 @@ class ToDoApp:
         self.root.after(1000, self.check_reset_time)
 
     def reset_tasks(self):
-        if not self.tasks:
-            self.streak_count += 1
-        else:
-            self.streak_count = 0
-        self.streak_label.config(text=f"Streak: {self.streak_count}")
-        self.tasks = []
+        self.cursor.execute('UPDATE tasks SET is_done = 0')
+        self.conn.commit()
         self.task_listbox.delete(0, tk.END)
+        self.done_listbox.delete(0, tk.END)
+        self.load_tasks()
+        self.streak_label.config(text=f"Streak: {self.streak_count}")
 
 if __name__ == "__main__":
     root = tk.Tk()
